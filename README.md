@@ -23,7 +23,7 @@ To install the required dependencies and create a Conda environment, follow thes
 1. Clone the repository:
 
     ```shell
-    git clone https://github.com/username/repo.git
+    git clone https://github.com/samiemostafavi/packet-arrival-prediction.git
     ```
 
 2. Change into the project directory:
