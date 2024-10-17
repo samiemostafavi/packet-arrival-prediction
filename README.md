@@ -29,7 +29,7 @@ To install the required dependencies and create a Conda environment, follow thes
 2. Change into the project directory:
 
     ```shell
-    cd repo
+    cd packet-arrival-prediction
     ```
 
 3. Create a new Conda environment:
