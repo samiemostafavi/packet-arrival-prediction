@@ -163,5 +163,6 @@ cython_debug/
 *_results/
 results/
 data/
+config/
 *.lseq
 *.parquet
