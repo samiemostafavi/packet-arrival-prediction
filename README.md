@@ -91,7 +91,7 @@ Now you can remove gnb, ue, and upf folders to save space. Then the directory st
 │       └── database.db
 ```
 
-### Create Training Dataset
+### Create a Dataset
 
 
 Make sure to update/create the training dataset configuration file and insert it in the `config` folder under the name `training_dataset_config.json`.
@@ -119,6 +119,29 @@ Then the directory structure should look like:
 
 Now you can create a training dataset by executing the script:
 ```shell
-python main.py -t plot_arrival_data -s data/240928_082545_results
-python main.py -t create_training_dataset -s data/240928_082545_results -c config/training_dataset_config.json -n test0
+python main.py -t plot_arrival_data -s data/240928_082545_results -c config/dataset_config.json -n test0
+python main.py -t create_training_dataset -s data/240928_082545_results -c config/dataset_config.json -n test0
+```
+
+### Train a Model
+
+Create a training config file in the config folder `training_config.yaml` and pass it like:
+```shell
+python main.py -t train_model -c config/training_config.yaml -i THP_train
+```
+Specify an experiment id, which chooses a specific configuration inside the yaml file.
+
+
+### Predict using a Model
+
+
+```shell
+python main.py -t generate_predictions -s data/240928_082545_results -n test0 -i 218481_140401600746112_241017-110318
+```
+
+
+### Plot the predictions
+
+```shell
+python main.py -t plot_predictions -s data/240928_082545_results -n test0 -i 254926_139826076787328_241018-105017
 ```

@@ -1,0 +1,62 @@
+pipeline_config_id: runner_config
+
+data:
+  240928_082545_results_test0:
+    data_format: json
+    train_dir:  ./data/240928_082545_results/training_datasets/test0/train.pkl
+    valid_dir:  ./data/240928_082545_results/training_datasets/test0/dev.pkl
+    test_dir:  ./data/240928_082545_results/training_datasets/test0/test.pkl
+    data_specs:
+      num_event_types: 1
+      pad_token_id: 1
+      padding_side: right
+      truncation_side: right
+
+  s20-2_results_test0:
+    data_format: pkl
+    train_dir: ../data/s20-2_results/training_datasets/test0/train.pkl
+    valid_dir: ../data/s20-2_results/training_datasets/test0/dev.pkl
+    test_dir: ../data/s20-2_results/training_datasets/test0/test.pkl
+    data_specs:
+      num_event_types: 1
+      pad_token_id: 1
+      padding_side: right
+      truncation_side: right
+
+THP_train:
+  base_config:
+    stage: train
+    backend: torch
+    dataset_id: 240928_082545_results_test0
+    runner_id: std_tpp
+    model_id: THP # model name
+    base_dir: './data/240928_082545_results/training_results/test0/'
+  trainer_config:
+    batch_size: 2048
+    max_epoch: 500
+    shuffle: False
+    optimizer: adam
+    learning_rate: 1.e-3
+    valid_freq: 5
+    use_tfb: False
+    metrics: [ 'acc', 'rmse' ]
+    seed: 2019
+    gpu: 0
+  model_config:
+    hidden_size: 256
+    #time_emb_size: 16
+    num_layers: 2
+    num_heads: 16
+    #mc_num_sample_per_step: 20
+    loss_integral_num_sample_per_step: 20
+    use_ln: False
+    thinning:
+      num_seq: 10
+      num_sample: 1
+      num_exp: 500 # number of i.i.d. Exp(intensity_bound) draws at one time in thinning algorithm
+      look_ahead_time: 10
+      patience_counter: 5 # the maximum iteration used in adaptive thinning
+      over_sample_rate: 5
+      num_samples_boundary: 5
+      dtime_max: 20
+      num_step_gen: 1

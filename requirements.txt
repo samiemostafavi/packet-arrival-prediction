@@ -1,4 +1,4 @@
-matplotlib
+plotly
 scipy
 edaf @ git+https://github.com/samiemostafavi/edaf@develop
 easy_tpp @ git+https://github.com/samiemostafavi/EasyTemporalPointProcess@main

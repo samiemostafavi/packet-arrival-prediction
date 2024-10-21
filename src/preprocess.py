@@ -1,5 +1,5 @@
 import os, sys, gzip, json, sqlite3, random, pickle
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
 from loguru import logger
@@ -48,10 +48,16 @@ def preprocess_edaf(args):
 
     # NLMT
     nlmt_path = folder_path.joinpath("upf")
-    nlmt_file = list(nlmt_path.glob("se_*.json.gz"))[0]
-    with gzip.open(nlmt_file, 'rt', encoding='utf-8') as file:
-        nlmt_records = json.load(file)['oneway_trips']
-    logger.info(f"found nlmt json file: {nlmt_file}")
+    nlmt_file = list(nlmt_path.glob("se_*"))[0]
+    if nlmt_file.suffix == '.json':
+        with open(nlmt_file, 'r') as file:
+            nlmt_records = json.load(file)['oneway_trips']
+    elif nlmt_file.suffix == '.gz':
+        with gzip.open(nlmt_file, 'rt', encoding='utf-8') as file:
+            nlmt_records = json.load(file)['oneway_trips']
+    else:
+        logger.error(f"NLMT file format not supported: {nlmt_file.suffix}")
+    logger.info(f"found nlmt file: {nlmt_file}")
 
     # Open a connection to the SQLite database
     conn = sqlite3.connect(result_database_file)
@@ -81,6 +87,7 @@ def plot_arrival_data(args):
     history_window_size = config['history_window_size']
     dataset_size_max = config['dataset_size_max']
     split_ratios = config['split_ratios']
+    dtime_max = config['dtime_max']
     
     slots_duration_ms = exp_config['slots_duration_ms']
     num_slots_per_frame = exp_config['slots_per_frame']
@@ -122,8 +129,10 @@ def plot_arrival_data(args):
     packet_inp_ts_arr = []
     frame_strt_ts_arr = []
     slot_num_arr = []
+    delta_times_ms = []
+    prev_arrival_ts = 0
     for packet in packets:
-        if packet['len'] not in filter_packet_sizes:
+        if len(filter_packet_sizes) > 0 and packet['len'] not in filter_packet_sizes:
             continue
         frame_start_ts, frame_num, slot_num = scheduling_analyzer.find_frame_slot_from_ts(
             timestamp=packet['ip.in_t'], 
@@ -131,35 +140,40 @@ def plot_arrival_data(args):
             #SCHED_OFFSET_S=0.004 # 4ms which is 8*slot_duration_ms
             SCHED_OFFSET_S=scheduling_time_ahead_ms/1000 # 4ms which is 8*slot_duration_ms
         )
+        if prev_arrival_ts is not 0:
+            delta_times_ms.append((packet['ip.in_t']-prev_arrival_ts)*1000)
+        prev_arrival_ts = packet['ip.in_t']
         slot_num_arr.append(slot_num)
         frame_strt_ts_arr.append(frame_start_ts)
         packet_inp_ts_arr.append(packet['ip.in_t'])
         packet_size_arr.append(packet['len'])
 
+    # Plot probability distribution of delta times
+    import plotly.express as px
+    # Create a histogram plot of the delta times
+    fig = px.histogram(x=delta_times_ms, nbins=100, title='Probability Distribution of Delta Times', histnorm='probability')
+    fig.update_layout(xaxis_range=[0, dtime_max])
+    fig.update_layout(xaxis_title='Delta Time (ms)', yaxis_title='Probability')
+    fig.write_html(str(results_folder_addr / 'delta_times.html'))
+
     # Plot timeseries of slot numbers against packet_inp_ts
-    plt.figure()
-    plt.xlabel('time')
-    plt.ylabel('slot number')
-    plt.title('Timeseries of packet arrival events')
-    plt.plot(packet_inp_ts_arr, slot_num_arr, color='red', linestyle='None', marker='o')
-    plt.plot(frame_strt_ts_arr, np.ones(len(frame_strt_ts_arr)), color='blue', linestyle='None', marker='o')
-    plt.savefig(results_folder_addr / 'slot_numbers.png')
+    fig1 = go.Figure()
+    fig1.add_trace(go.Scatter(x=packet_inp_ts_arr, y=slot_num_arr, mode='markers', name='Slot Numbers'))
+    fig1.add_trace(go.Scatter(x=frame_strt_ts_arr, y=np.ones(len(frame_strt_ts_arr)), mode='markers', name='Frame Start'))
+    fig1.update_layout(title='Timeseries of packet arrival events', xaxis_title='Time', yaxis_title='Slot Number')
+    fig1.write_html(str(results_folder_addr / 'slot_numbers.html'))
 
     # Plot timeseries of (packet_inp_ts-framest_ts_arr)*1000 against packet_inp_ts
-    plt.figure()
-    plt.xlabel('packet_inp_ts')
-    plt.ylabel('(packet_inp_ts-framest_ts_arr)*1000')
-    plt.title('Timeseries of (packet_inp_ts-framest_ts_arr)*1000')
-    plt.plot(packet_inp_ts_arr, (np.array(packet_inp_ts_arr)-np.array(frame_strt_ts_arr))*1000, color='green', linestyle='None', marker='o')
-    plt.savefig(results_folder_addr / 'time_difference.png')
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=packet_inp_ts_arr, y=(np.array(packet_inp_ts_arr)-np.array(frame_strt_ts_arr))*1000, mode='markers', name='Time Difference'))
+    fig2.update_layout(title='Timeseries of (packet_inp_ts-framest_ts_arr)*1000', xaxis_title='Packet Input Time', yaxis_title='Time Difference (ms)')
+    fig2.write_html(str(results_folder_addr / 'time_difference.html'))
 
     # Plot timeseries of packet_size_arr
-    plt.figure()
-    plt.xlabel('packet_inp_ts')
-    plt.ylabel('packet sizes [bytes]')
-    plt.title('Timeseries of packet sizes')
-    plt.plot(packet_inp_ts_arr, packet_size_arr, color='green', linestyle='None', marker='o')
-    plt.savefig(results_folder_addr / 'packet_sizes.png')
+    fig3 = go.Figure()
+    fig3.add_trace(go.Scatter(x=packet_inp_ts_arr, y=packet_size_arr, mode='markers', name='Packet Sizes'))
+    fig3.update_layout(title='Timeseries of packet sizes', xaxis_title='Packet Input Time', yaxis_title='Packet Sizes (bytes)')
+    fig3.write_html(str(results_folder_addr / 'packet_sizes.html'))
 
 
 def create_training_dataset(args):
@@ -182,6 +196,7 @@ def create_training_dataset(args):
     dataset_size_max = config['dataset_size_max']
     split_ratios = config['split_ratios']
     dim_process = config['dim_process']
+    dtime_max = config['dtime_max']
 
     slots_duration_ms = exp_config['slots_duration_ms']
     num_slots_per_frame = exp_config['slots_per_frame']
@@ -222,7 +237,7 @@ def create_training_dataset(args):
     packet_arrival_events = []
     last_event_ts = 0
     for packet in packets:
-        if packet['len'] not in filter_packet_sizes:
+        if len(filter_packet_sizes) > 0 and packet['len'] not in filter_packet_sizes:
             continue
         frame_start_ts, frame_num, slot_num = scheduling_analyzer.find_frame_slot_from_ts(
             timestamp=packet['ip.in_t'], 
