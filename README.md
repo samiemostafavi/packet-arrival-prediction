@@ -131,6 +131,17 @@ python main.py -t train_model -c config/training_config.yaml -i THP_train
 ```
 Specify an experiment id, which chooses a specific configuration inside the yaml file.
 
+Then the directory structure should look like:
+```
+├── config
+│   ├── training_config.yaml
+│   └── dataset_config.json
+├── data
+│   └── 240928_082545_results
+│       ├── experiment_config.json
+│       └── database.db
+```
+
 
 ### Predict using a Model
 
