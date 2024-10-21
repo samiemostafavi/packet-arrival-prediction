@@ -94,7 +94,7 @@ Now you can remove gnb, ue, and upf folders to save space. Then the directory st
 ### Create a Dataset
 
 
-Make sure to update/create the training dataset configuration file and insert it in the `config` folder under the name `training_dataset_config.json`.
+Make sure to update/create the training dataset configuration file and insert it in the `config` folder under the name `dataset_config.json`.
 The file should be like:
 ```json
 {
@@ -110,7 +110,7 @@ The file should be like:
 Then the directory structure should look like:
 ```
 ├── config
-│   └── training_dataset_config.json
+│   └── dataset_config.json
 ├── data
 │   └── 240928_082545_results
 │       ├── experiment_config.json
